@@ -42,6 +42,14 @@ func setupRouter() *gin.Engine {
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(200, "pong")
 	})
+	searchRoute := r.Group("/search")
+	{
+		searchRoute.GET("/users", func(c *gin.Context) {
+			client := createClient()
+			users, err := client.SearchUsers(c.Query("q"), 100)
+			outputUsers(c, users, err)
+		})
+	}
 
 	userRoute := r.Group("/user")
 	{
@@ -113,6 +121,14 @@ type User struct {
 func outputUser(c *gin.Context, user *gitea.User, err error) {
 	if err == nil {
 		c.JSON(200, gin.H{"user": user})
+	} else {
+		c.JSON(500, gin.H{"err": err})
+	}
+}
+
+func outputUsers(c *gin.Context, users []*gitea.User, err error) {
+	if err == nil {
+		c.JSON(200, gin.H{"users": users})
 	} else {
 		c.JSON(500, gin.H{"err": err})
 	}
