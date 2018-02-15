@@ -1,10 +1,14 @@
+// Example call GITEA_HOST="http://gitea.local.io" GITEA_TOKEN=a2e4fa854aa4b989ca6b46b6e589c8eba50492dc go run main.go
+
 package main
 
 import (
 	"encoding/hex"
+	"os"
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/LunchBadger/git-api/sshGen"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/satori/go.uuid"
 )
@@ -12,7 +16,7 @@ import (
 var db = make(map[string]*sshGen.SSHKey)
 
 func createClient() *gitea.Client {
-	client := gitea.NewClient("http://gitea.local.io", "a2e4fa854aa4b989ca6b46b6e589c8eba50492dc")
+	client := gitea.NewClient(os.Getenv("GITEA_HOST"), os.Getenv("GITEA_TOKEN"))
 	return client
 }
 
@@ -31,14 +35,16 @@ func createUser(user *User) (*gitea.User, error) {
 	})
 }
 
-func findUser(user *User) (*gitea.User, error) {
-	client := createClient()
-	return client.GetUserInfo(buildName(user))
-}
-
 func setupRouter() *gin.Engine {
 	r := gin.Default()
 	// Ping test
+
+	r.Use(cors.New(cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"PUT", "PATCH", "POST", "GET", "DELETE"},
+		AllowHeaders:     []string{"Cache-Control", "Accept", "Authorization", "Accept-Encoding", "Access-Control-Request-Headers", "User-Agent", "Access-Control-Request-Method", "Pragma", "Connection", "Host"},
+		AllowCredentials: true,
+	}))
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(200, "pong")
 	})
@@ -51,7 +57,7 @@ func setupRouter() *gin.Engine {
 		})
 	}
 
-	userRoute := r.Group("/user")
+	userRoute := r.Group("/users")
 	{
 		userRoute.POST("/", func(c *gin.Context) {
 			var user User
@@ -61,7 +67,8 @@ func setupRouter() *gin.Engine {
 			}
 		})
 		userRoute.GET("/:prefix/:name", func(c *gin.Context) {
-			giteaUser, err := findUser(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
+			client := createClient()
+			giteaUser, err := client.GetUserInfo(buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")}))
 			outputUser(c, giteaUser, err)
 		})
 
