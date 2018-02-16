@@ -1,0 +1,45 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: git-api
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: git-api
+    spec:
+
+      containers:
+        - name: git-api
+          env:
+            - name: GITEA_HOST
+              value: http://git.gitea:3000
+              name: GITEA_TOKEN
+              value: a2e4fa854aa4b989ca6b46b6e589c8eba50492dc # change to real token
+          image: 410240865662.dkr.ecr.us-west-2.amazonaws.com/git-api:real-git
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-api
+  labels:
+    run: git-api
+spec:
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    run: git-api
+  type: ClusterIP
+
+  # no need for ingress, it is not public
+
