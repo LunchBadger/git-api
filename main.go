@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/hex"
+	"fmt"
 	"os"
 
 	"code.gitea.io/sdk/gitea"
@@ -89,13 +90,15 @@ func setupRouter() *gin.Engine {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
 			// keys, _ := sshGen.Gen()
 			client := createClient()
-
 			var keyRx addKeyRequest
 			if c.BindJSON(&keyRx) == nil {
-				pk, _ := client.AdminCreateUserPublicKey(username, gitea.CreateKeyOption{
+				fmt.Println(keyRx)
+
+				pk, err := client.AdminCreateUserPublicKey(username, gitea.CreateKeyOption{
 					Key:   keyRx.PublicKey,
 					Title: "LB gen " + uuid.NewV4().String(),
 				})
+				fmt.Println(err)
 				c.JSON(200, gin.H{"hash": pk})
 			} else {
 				c.JSON(400, gin.H{"err": "no key provided"})
