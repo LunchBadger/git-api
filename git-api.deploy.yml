@@ -19,7 +19,7 @@ spec:
           env:
             - name: GITEA_HOST
               value: http://git.gitea:3000
-              name: GITEA_TOKEN
+            - name: GITEA_TOKEN
               value: a2e4fa854aa4b989ca6b46b6e589c8eba50492dc # change to real token
           image: 410240865662.dkr.ecr.us-west-2.amazonaws.com/git-api:real-git
           imagePullPolicy: Always

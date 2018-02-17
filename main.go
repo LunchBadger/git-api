@@ -7,13 +7,10 @@ import (
 	"os"
 
 	"code.gitea.io/sdk/gitea"
-	"github.com/LunchBadger/git-api/sshGen"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/satori/go.uuid"
 )
-
-var db = make(map[string]*sshGen.SSHKey)
 
 func createClient() *gitea.Client {
 	client := gitea.NewClient(os.Getenv("GITEA_HOST"), os.Getenv("GITEA_TOKEN"))
@@ -90,24 +87,20 @@ func setupRouter() *gin.Engine {
 
 		userRoute.POST("/:prefix/:name/ssh", func(c *gin.Context) {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
-			keys, _ := sshGen.Gen()
+			// keys, _ := sshGen.Gen()
 			client := createClient()
 
-			pk, _ := client.AdminCreateUserPublicKey(username, gitea.CreateKeyOption{
-				Key:   keys.PublicKey,
-				Title: "LB gen " + uuid.NewV4().String(),
-			})
+			var keyRx addKeyRequest
+			if c.BindJSON(&keyRx) == nil {
+				pk, _ := client.AdminCreateUserPublicKey(username, gitea.CreateKeyOption{
+					Key:   keyRx.PublicKey,
+					Title: "LB gen " + uuid.NewV4().String(),
+				})
+				c.JSON(200, gin.H{"hash": pk})
+			} else {
+				c.JSON(400, gin.H{"err": "no key provided"})
+			}
 
-			db[username] = keys
-			c.JSON(200, gin.H{"keys": keys, "hash": pk})
-		})
-
-		// If key exists no need to generate new one
-
-		userRoute.GET("/:prefix/:name/ssh", func(c *gin.Context) {
-			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
-			keys := db[username]
-			c.JSON(200, gin.H{"keys": keys})
 		})
 	}
 	return r
@@ -123,6 +116,10 @@ func main() {
 type User struct {
 	Name   string `json:"name"`
 	Prefix string `json:"prefix"`
+}
+
+type addKeyRequest struct {
+	PublicKey string `json:"publicKey"`
 }
 
 func outputUser(c *gin.Context, user *gitea.User, err error) {
