@@ -85,6 +85,15 @@ func setupRouter() *gin.Engine {
 			})
 			outputRepo(c, repo, err)
 		})
+		userRoute.GET("/:prefix/:name/repos/:repoName/*filepath", func(c *gin.Context) {
+			client := createClient()
+			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
+			file, err := client.GetFile(username, c.Param("repoName"), "master", "/lunchbadger.json")
+			if err != nil {
+				fmt.Println(err)
+			}
+			c.JSON(200, gin.H{"data": file})
+		})
 
 		userRoute.POST("/:prefix/:name/ssh", func(c *gin.Context) {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
