@@ -95,6 +95,31 @@ func setupRouter() *gin.Engine {
 			c.JSON(200, gin.H{"data": file})
 		})
 
+		userRoute.PUT("/:prefix/:name/repos/:repoName/hook", func(c *gin.Context) {
+			client := createClient()
+			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
+			// h, _ := client.GetRepoHook(username, "dev", 0)
+			// fmt.Printf("%j", h)
+			var createHookRx createHookRequest
+			c.BindJSON(&createHookRx)
+			if createHookRx.url == "" {
+				createHookRx.url = "http://configstore.default/hook"
+			}
+			file, err := client.CreateRepoHook(username, c.Param("repoName"), gitea.CreateHookOption{
+				Type:   "gitea",
+				Active: true,
+				Events: []string{"push"},
+				Config: map[string]string{
+					"url":          createHookRx.url,
+					"content_type": "json",
+				},
+			})
+			if err != nil {
+				fmt.Println(err)
+			}
+			c.JSON(200, gin.H{"data": file})
+		})
+
 		userRoute.POST("/:prefix/:name/ssh", func(c *gin.Context) {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
 			// keys, _ := sshGen.Gen()
@@ -132,6 +157,10 @@ type User struct {
 
 type addKeyRequest struct {
 	PublicKey string `json:"publicKey"`
+}
+
+type createHookRequest struct {
+	url string `json:"url"`
 }
 
 func outputUser(c *gin.Context, user *gitea.User, err error) {
