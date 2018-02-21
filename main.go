@@ -102,22 +102,36 @@ func setupRouter() *gin.Engine {
 			// fmt.Printf("%j", h)
 			var createHookRx createHookRequest
 			c.BindJSON(&createHookRx)
-			if createHookRx.url == "" {
-				createHookRx.url = "http://configstore.default/hook"
+
+			if createHookRx.Url == "" {
+				createHookRx.Url = "http://configstore.default/hook"
 			}
-			file, err := client.CreateRepoHook(username, c.Param("repoName"), gitea.CreateHookOption{
-				Type:   "gitea",
-				Active: true,
-				Events: []string{"push"},
-				Config: map[string]string{
-					"url":          createHookRx.url,
-					"content_type": "json",
-				},
-			})
-			if err != nil {
-				fmt.Println(err)
+			repo := c.Param("repoName")
+			hooks, _ := client.ListRepoHooks(username, repo)
+			registerHook := true
+			for i := 0; i < len(hooks); i++ {
+				hook := hooks[i]
+				if hook.Config["url"] == createHookRx.Url {
+					registerHook = false
+				}
 			}
-			c.JSON(200, gin.H{"data": file})
+			if registerHook {
+				fmt.Printf("Registering hook for repo %s/%s to call %s", username, repo, createHookRx.Url)
+				hookInfo, err := client.CreateRepoHook(username, repo, gitea.CreateHookOption{
+					Type:   "gitea",
+					Active: true,
+					Events: []string{"push"},
+					Config: map[string]string{
+						"url":          createHookRx.Url,
+						"content_type": "json",
+					},
+				})
+				if err != nil {
+					fmt.Println(err)
+				}
+				fmt.Println(hookInfo)
+			}
+			c.JSON(200, gin.H{"ok": true})
 		})
 
 		userRoute.POST("/:prefix/:name/ssh", func(c *gin.Context) {
@@ -160,7 +174,7 @@ type addKeyRequest struct {
 }
 
 type createHookRequest struct {
-	url string `json:"url"`
+	Url string `json:"url"`
 }
 
 func outputUser(c *gin.Context, user *gitea.User, err error) {
