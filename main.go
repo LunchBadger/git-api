@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/gin-contrib/cors"
@@ -155,11 +156,21 @@ func setupRouter() *gin.Engine {
 
 		userRoute.GET("/:prefix/:name/ssh", func(c *gin.Context) {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
-			client := createClient()
 			fmt.Println(username)
-			keys, err := client.ListPublicKeys(username)
+			keys, err := createClient().ListPublicKeys(username)
 			fmt.Println(err)
 			c.JSON(200, gin.H{"publicKeys": keys})
+		})
+		userRoute.DELETE("/:prefix/:name/ssh/:keyId", func(c *gin.Context) {
+			keyID, err := strconv.ParseInt(c.Param("keyId"), 10, 64)
+			fmt.Println(err)
+			deleteResult := createClient().DeletePublicKey(keyID)
+			if deleteResult == nil {
+				c.JSON(204, nil)
+			} else {
+				c.JSON(400, gin.H{"result": "UNKNOWN_ID"})
+			}
+
 		})
 	}
 	return r
