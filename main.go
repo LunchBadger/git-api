@@ -136,7 +136,6 @@ func setupRouter() *gin.Engine {
 
 		userRoute.POST("/:prefix/:name/ssh", func(c *gin.Context) {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
-			// keys, _ := sshGen.Gen()
 			client := createClient()
 			var keyRx addKeyRequest
 			if c.BindJSON(&keyRx) == nil {
@@ -152,6 +151,15 @@ func setupRouter() *gin.Engine {
 				c.JSON(400, gin.H{"err": "no key provided"})
 			}
 
+		})
+
+		userRoute.GET("/:prefix/:name/ssh", func(c *gin.Context) {
+			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
+			client := createClient()
+			fmt.Println(username)
+			keys, err := client.ListPublicKeys(username)
+			fmt.Println(err)
+			c.JSON(200, gin.H{"publicKeys": keys})
 		})
 	}
 	return r
