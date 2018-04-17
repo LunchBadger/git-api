@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/gin-contrib/cors"
@@ -136,7 +137,6 @@ func setupRouter() *gin.Engine {
 
 		userRoute.POST("/:prefix/:name/ssh", func(c *gin.Context) {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
-			// keys, _ := sshGen.Gen()
 			client := createClient()
 			var keyRx addKeyRequest
 			if c.BindJSON(&keyRx) == nil {
@@ -150,6 +150,25 @@ func setupRouter() *gin.Engine {
 				c.JSON(200, gin.H{"hash": pk})
 			} else {
 				c.JSON(400, gin.H{"err": "no key provided"})
+			}
+
+		})
+
+		userRoute.GET("/:prefix/:name/ssh", func(c *gin.Context) {
+			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
+			fmt.Println(username)
+			keys, err := createClient().ListPublicKeys(username)
+			fmt.Println(err)
+			c.JSON(200, gin.H{"publicKeys": keys})
+		})
+		userRoute.DELETE("/:prefix/:name/ssh/:keyId", func(c *gin.Context) {
+			keyID, err := strconv.ParseInt(c.Param("keyId"), 10, 64)
+			fmt.Println(err)
+			deleteResult := createClient().DeletePublicKey(keyID)
+			if deleteResult == nil {
+				c.JSON(204, nil)
+			} else {
+				c.JSON(400, gin.H{"result": "UNKNOWN_ID"})
 			}
 
 		})
