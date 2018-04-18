@@ -41,7 +41,7 @@ func setupRouter() *gin.Engine {
 	r.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"PUT", "PATCH", "POST", "GET", "DELETE"},
-		AllowHeaders:     []string{"Cache-Control", "Accept", "Authorization", "Accept-Encoding", "Access-Control-Request-Headers", "User-Agent", "Access-Control-Request-Method", "Pragma", "Connection", "Host"},
+		AllowHeaders:     []string{"Cache-Control", "Accept", "Authorization", "Accept-Encoding", "Access-Control-Request-Headers", "User-Agent", "Access-Control-Request-Method", "Pragma", "Connection", "Host", "Content-Type"},
 		AllowCredentials: true,
 	}))
 	r.GET("/ping", func(c *gin.Context) {
