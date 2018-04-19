@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 
 	"code.gitea.io/sdk/gitea"
@@ -159,9 +160,21 @@ func setupRouter() *gin.Engine {
 					Title: title,
 				})
 				if err != nil {
-					fmt.Println(err)
-					c.AbortWithStatusJSON(http.StatusUnprocessableEntity, err.Error())
-					// c.JSON(, gin.H{"err": err.Error()})
+					errorString := err.Error()
+					// This is a string with different possible formats
+					fmt.Println(errorString)
+
+					// 422 has JSON in string like `422 Unprocessable Entity: {"message":"Key content has been used as non-deploy key","url":"https://godoc.org/github.com/go-gitea/go-sdk/gitea"}`
+					// The code is to extract message
+					if isValidationErr, _ := regexp.MatchString("422", errorString); isValidationErr {
+						res := regexp.MustCompile(":\\\"(.*)\\\",").FindStringSubmatch(errorString)
+						if len(res) > 1 {
+							errorString = res[1]
+						}
+						fmt.Println(errorString)
+					}
+
+					c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": errorString})
 				} else {
 					c.JSON(200, gin.H{"result": pk})
 				}
