@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 
@@ -139,7 +140,8 @@ func setupRouter() *gin.Engine {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
 			client := createClient()
 			var keyRx addKeyRequest
-			if c.BindJSON(&keyRx) == nil {
+			bindErr := c.BindJSON(&keyRx)
+			if bindErr == nil {
 				fmt.Println(keyRx)
 				var title string
 				if keyRx.Type == "" {
@@ -156,10 +158,15 @@ func setupRouter() *gin.Engine {
 					Key:   keyRx.PublicKey,
 					Title: title,
 				})
-				fmt.Println(err)
-				c.JSON(200, gin.H{"hash": pk})
+				if err != nil {
+					fmt.Println(err)
+					c.AbortWithStatusJSON(http.StatusUnprocessableEntity, err.Error())
+					// c.JSON(, gin.H{"err": err.Error()})
+				} else {
+					c.JSON(200, gin.H{"result": pk})
+				}
 			} else {
-				c.JSON(400, gin.H{"err": "no key provided"})
+				c.JSON(400, gin.H{"err": bindErr})
 			}
 
 		})
