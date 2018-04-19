@@ -104,26 +104,26 @@ func setupRouter() *gin.Engine {
 			var createHookRx createHookRequest
 			c.BindJSON(&createHookRx)
 
-			if createHookRx.Url == "" {
-				createHookRx.Url = "http://configstore.default/hook"
+			if createHookRx.URL == "" {
+				createHookRx.URL = "http://configstore.default/hook"
 			}
 			repo := c.Param("repoName")
 			hooks, _ := client.ListRepoHooks(username, repo)
 			registerHook := true
 			for i := 0; i < len(hooks); i++ {
 				hook := hooks[i]
-				if hook.Config["url"] == createHookRx.Url {
+				if hook.Config["url"] == createHookRx.URL {
 					registerHook = false
 				}
 			}
 			if registerHook {
-				fmt.Printf("Registering hook for repo %s/%s to call %s", username, repo, createHookRx.Url)
+				fmt.Printf("Registering hook for repo %s/%s to call %s", username, repo, createHookRx.URL)
 				hookInfo, err := client.CreateRepoHook(username, repo, gitea.CreateHookOption{
 					Type:   "gitea",
 					Active: true,
 					Events: []string{"push"},
 					Config: map[string]string{
-						"url":          createHookRx.Url,
+						"url":          createHookRx.URL,
 						"content_type": "json",
 					},
 				})
@@ -141,10 +141,20 @@ func setupRouter() *gin.Engine {
 			var keyRx addKeyRequest
 			if c.BindJSON(&keyRx) == nil {
 				fmt.Println(keyRx)
+				var title string
+				if keyRx.Type == "" {
+					if keyRx.Title != "" {
+						title = keyRx.Title
+					} else {
+						title = uuid.NewV4().String()
+					}
+				} else {
+					title = "lunchbadger-internal-" + keyRx.Type + uuid.NewV4().String()
+				}
 
 				pk, err := client.AdminCreateUserPublicKey(username, gitea.CreateKeyOption{
 					Key:   keyRx.PublicKey,
-					Title: "LB gen " + uuid.NewV4().String(),
+					Title: title,
 				})
 				fmt.Println(err)
 				c.JSON(200, gin.H{"hash": pk})
@@ -190,10 +200,12 @@ type User struct {
 
 type addKeyRequest struct {
 	PublicKey string `json:"publicKey"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
 }
 
 type createHookRequest struct {
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 
 func outputUser(c *gin.Context, user *gitea.User, err error) {
