@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/gin-contrib/cors"
@@ -152,7 +153,19 @@ func setupRouter() *gin.Engine {
 						title = uuid.NewV4().String()
 					}
 				} else {
-					title = "lunchbadger-internal-" + keyRx.Type + uuid.NewV4().String()
+					title = "lunchbadger-internal-" + keyRx.Type
+					keys, listErr := client.ListPublicKeys(username)
+					if listErr == nil {
+						for i := 0; i < len(keys); i++ {
+							// TODO: check for "LB gen" is for backwards compatibility, remove once not needed
+							if strings.Contains(keys[i].Title, title) || strings.Contains(keys[i].Title, "LB gen") {
+								fmt.Println("Removing KEY ", keys[i])
+								go client.DeletePublicKey(keys[i].ID)
+							}
+						}
+					} else {
+						fmt.Println(listErr)
+					}
 				}
 
 				pk, err := client.AdminCreateUserPublicKey(username, gitea.CreateKeyOption{
@@ -166,7 +179,7 @@ func setupRouter() *gin.Engine {
 
 					// 422 has JSON in string like `422 Unprocessable Entity: {"message":"Key content has been used as non-deploy key","url":"https://godoc.org/github.com/go-gitea/go-sdk/gitea"}`
 					// The code is to extract message
-					if isValidationErr, _ := regexp.MatchString("422", errorString); isValidationErr {
+					if isValidationErr := strings.Contains(errorString, "422"); isValidationErr {
 						res := regexp.MustCompile(":\\\"(.*)\\\",").FindStringSubmatch(errorString)
 						if len(res) > 1 {
 							errorString = res[1]
