@@ -5,8 +5,11 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/gin-contrib/cors"
@@ -41,7 +44,7 @@ func setupRouter() *gin.Engine {
 	r.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"PUT", "PATCH", "POST", "GET", "DELETE"},
-		AllowHeaders:     []string{"Cache-Control", "Accept", "Authorization", "Accept-Encoding", "Access-Control-Request-Headers", "User-Agent", "Access-Control-Request-Method", "Pragma", "Connection", "Host"},
+		AllowHeaders:     []string{"Cache-Control", "Accept", "Authorization", "Accept-Encoding", "Access-Control-Request-Headers", "User-Agent", "Access-Control-Request-Method", "Pragma", "Connection", "Host", "Content-Type"},
 		AllowCredentials: true,
 	}))
 	r.GET("/ping", func(c *gin.Context) {
@@ -104,26 +107,26 @@ func setupRouter() *gin.Engine {
 			var createHookRx createHookRequest
 			c.BindJSON(&createHookRx)
 
-			if createHookRx.Url == "" {
-				createHookRx.Url = "http://configstore.default/hook"
+			if createHookRx.URL == "" {
+				createHookRx.URL = "http://configstore.default/hook"
 			}
 			repo := c.Param("repoName")
 			hooks, _ := client.ListRepoHooks(username, repo)
 			registerHook := true
 			for i := 0; i < len(hooks); i++ {
 				hook := hooks[i]
-				if hook.Config["url"] == createHookRx.Url {
+				if hook.Config["url"] == createHookRx.URL {
 					registerHook = false
 				}
 			}
 			if registerHook {
-				fmt.Printf("Registering hook for repo %s/%s to call %s", username, repo, createHookRx.Url)
+				fmt.Printf("Registering hook for repo %s/%s to call %s", username, repo, createHookRx.URL)
 				hookInfo, err := client.CreateRepoHook(username, repo, gitea.CreateHookOption{
 					Type:   "gitea",
 					Active: true,
 					Events: []string{"push"},
 					Config: map[string]string{
-						"url":          createHookRx.Url,
+						"url":          createHookRx.URL,
 						"content_type": "json",
 					},
 				})
@@ -139,17 +142,57 @@ func setupRouter() *gin.Engine {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
 			client := createClient()
 			var keyRx addKeyRequest
-			if c.BindJSON(&keyRx) == nil {
+			bindErr := c.BindJSON(&keyRx)
+			if bindErr == nil {
 				fmt.Println(keyRx)
+				var title string
+				if keyRx.Type == "" {
+					if keyRx.Title != "" {
+						title = keyRx.Title
+					} else {
+						title = uuid.NewV4().String()
+					}
+				} else {
+					title = "lunchbadger-internal-" + keyRx.Type
+					keys, listErr := client.ListPublicKeys(username)
+					if listErr == nil {
+						for i := 0; i < len(keys); i++ {
+							// TODO: check for "LB gen" is for backwards compatibility, remove once not needed
+							if strings.Contains(keys[i].Title, title) || strings.Contains(keys[i].Title, "LB gen") {
+								fmt.Println("Removing KEY ", keys[i])
+								go client.DeletePublicKey(keys[i].ID)
+							}
+						}
+					} else {
+						fmt.Println(listErr)
+					}
+				}
 
 				pk, err := client.AdminCreateUserPublicKey(username, gitea.CreateKeyOption{
 					Key:   keyRx.PublicKey,
-					Title: "LB gen " + uuid.NewV4().String(),
+					Title: title,
 				})
-				fmt.Println(err)
-				c.JSON(200, gin.H{"hash": pk})
+				if err != nil {
+					errorString := err.Error()
+					// This is a string with different possible formats
+					fmt.Println(errorString)
+
+					// 422 has JSON in string like `422 Unprocessable Entity: {"message":"Key content has been used as non-deploy key","url":"https://godoc.org/github.com/go-gitea/go-sdk/gitea"}`
+					// The code is to extract message
+					if isValidationErr := strings.Contains(errorString, "422"); isValidationErr {
+						res := regexp.MustCompile(":\\\"(.*)\\\",").FindStringSubmatch(errorString)
+						if len(res) > 1 {
+							errorString = res[1]
+						}
+						fmt.Println(errorString)
+					}
+
+					c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": errorString})
+				} else {
+					c.JSON(200, gin.H{"result": pk})
+				}
 			} else {
-				c.JSON(400, gin.H{"err": "no key provided"})
+				c.JSON(400, gin.H{"err": bindErr})
 			}
 
 		})
@@ -159,7 +202,13 @@ func setupRouter() *gin.Engine {
 			fmt.Println(username)
 			keys, err := createClient().ListPublicKeys(username)
 			fmt.Println(err)
-			c.JSON(200, gin.H{"publicKeys": keys})
+			filteredKeys := make([]*gitea.PublicKey, 0)
+			for _, k := range keys {
+				if !strings.Contains(k.Title, "lunchbadger-internal") {
+					filteredKeys = append(filteredKeys, k)
+				}
+			}
+			c.JSON(200, gin.H{"publicKeys": filteredKeys})
 		})
 		userRoute.DELETE("/:prefix/:name/ssh/:keyId", func(c *gin.Context) {
 			keyID, err := strconv.ParseInt(c.Param("keyId"), 10, 64)
@@ -190,10 +239,12 @@ type User struct {
 
 type addKeyRequest struct {
 	PublicKey string `json:"publicKey"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
 }
 
 type createHookRequest struct {
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 
 func outputUser(c *gin.Context, user *gitea.User, err error) {
