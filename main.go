@@ -203,15 +203,10 @@ func setupRouter() *gin.Engine {
 			keys, err := createClient().ListPublicKeys(username)
 			fmt.Println(err)
 			filteredKeys := make([]*gitea.PublicKey, 0)
-			filter := c.Request.URL.Query().Get("filter")
-			if filter == "" || filter == "user" {
-				for _, k := range keys {
-					if !strings.Contains(k.Title, "lunchbadger-internal") {
-						filteredKeys = append(filteredKeys, k)
-					}
+			for _, k := range keys {
+				if !strings.Contains(k.Title, "lunchbadger-internal") {
+					filteredKeys = append(filteredKeys, k)
 				}
-			} else {
-				filteredKeys = keys
 			}
 			c.JSON(200, gin.H{"publicKeys": filteredKeys})
 		})
