@@ -85,7 +85,8 @@ func setupRouter() *gin.Engine {
 			client := createClient()
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
 			repo, err := client.AdminCreateRepo(username, gitea.CreateRepoOption{
-				Name: c.Param("repoName"),
+				Name:    c.Param("repoName"),
+				Private: true,
 			})
 			outputRepo(c, repo, err)
 		})
