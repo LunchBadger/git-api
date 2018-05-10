@@ -1,4 +1,4 @@
-// Example call GITEA_HOST="http://gitea.local.io" GITEA_TOKEN=a2e4fa854aa4b989ca6b46b6e589c8eba50492dc go run main.go
+// Example call GITEA_HOST="http://gitea.local.io" GITEA_TOKEN=a2e4fa854aa4b989ca6b46b6e589c8eba50492dc go run main.go //
 
 package main
 
