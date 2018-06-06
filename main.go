@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"code.gitea.io/sdk/gitea"
+	limit "github.com/aviddiviner/gin-limit"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/satori/go.uuid"
@@ -47,6 +48,7 @@ func setupRouter() *gin.Engine {
 		AllowHeaders:     []string{"Cache-Control", "Accept", "Authorization", "Accept-Encoding", "Access-Control-Request-Headers", "User-Agent", "Access-Control-Request-Method", "Pragma", "Connection", "Host", "Content-Type"},
 		AllowCredentials: true,
 	}))
+	r.Use(limit.MaxAllowed(3))
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(200, "pong")
 	})

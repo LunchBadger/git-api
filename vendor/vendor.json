@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "9oT1RMiw/Ox5bGbJ4w7G01Q9l0s=",
+			"path": "github.com/aviddiviner/gin-limit",
+			"revision": "43b5f79762c10a62aab8323f9fc45b87e784625f",
+			"revisionTime": "2017-09-18T01:28:23Z"
+		}
+	],
+	"rootPath": "github.com/LunchBadger/git-api"
+}
