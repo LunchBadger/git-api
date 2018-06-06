@@ -41,14 +41,16 @@ func createUser(user *User) (*gitea.User, error) {
 func setupRouter() *gin.Engine {
 	r := gin.Default()
 	// Ping test
-
+	rateLimit, _ := strconv.Atoi(os.Getenv("GIT_API_USER_RATE_LIMIT"))
+	if rateLimit == 0 {
+		rateLimit = 5 // some default
+	}
 	r.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"PUT", "PATCH", "POST", "GET", "DELETE"},
 		AllowHeaders:     []string{"Cache-Control", "Accept", "Authorization", "Accept-Encoding", "Access-Control-Request-Headers", "User-Agent", "Access-Control-Request-Method", "Pragma", "Connection", "Host", "Content-Type"},
 		AllowCredentials: true,
 	}))
-	r.Use(limit.MaxAllowed(3))
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(200, "pong")
 	})
@@ -63,6 +65,8 @@ func setupRouter() *gin.Engine {
 
 	userRoute := r.Group("/users")
 	{
+		// TODO probably it can be applied to ssh endpoints only
+		userRoute.Use(limit.MaxAllowed(rateLimit))
 		userRoute.POST("/", func(c *gin.Context) {
 			var user User
 			if c.BindJSON(&user) == nil {
