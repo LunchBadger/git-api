@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"code.gitea.io/sdk/gitea"
+	limit "github.com/aviddiviner/gin-limit"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/satori/go.uuid"
@@ -40,7 +41,10 @@ func createUser(user *User) (*gitea.User, error) {
 func setupRouter() *gin.Engine {
 	r := gin.Default()
 	// Ping test
-
+	rateLimit, _ := strconv.Atoi(os.Getenv("GIT_API_USER_RATE_LIMIT"))
+	if rateLimit == 0 {
+		rateLimit = 5 // some default
+	}
 	r.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"PUT", "PATCH", "POST", "GET", "DELETE"},
@@ -61,6 +65,8 @@ func setupRouter() *gin.Engine {
 
 	userRoute := r.Group("/users")
 	{
+		// TODO probably it can be applied to ssh endpoints only
+		userRoute.Use(limit.MaxAllowed(rateLimit))
 		userRoute.POST("/", func(c *gin.Context) {
 			var user User
 			if c.BindJSON(&user) == nil {
