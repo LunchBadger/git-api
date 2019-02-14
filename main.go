@@ -13,6 +13,7 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	limit "github.com/aviddiviner/gin-limit"
+	// gitea "github.com/drmegavolt/go-sdk/gitea"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	uuid "github.com/satori/go.uuid"
@@ -94,8 +95,15 @@ func setupRouter() *gin.Engine {
 		userRoute.GET("/:prefix/:name/repos", func(c *gin.Context) {
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
 			client := createClient()
-			client.SetSudo(username)
 			userRepos, err := client.ListUserRepos(username)
+			outputRepos(c, userRepos, err)
+		})
+
+		userRoute.GET("/:prefix/:name/myrepos", func(c *gin.Context) {
+			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
+			client := createClient()
+			client.SetSudo(username)
+			userRepos, err := client.ListMyRepos()
 			outputRepos(c, userRepos, err)
 		})
 
