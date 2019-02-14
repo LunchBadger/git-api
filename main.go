@@ -15,7 +15,7 @@ import (
 	limit "github.com/aviddiviner/gin-limit"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 func createClient() *gitea.Client {
@@ -29,7 +29,7 @@ func buildName(user *User) string {
 
 func createUser(user *User) (*gitea.User, error) {
 	client := createClient()
-	idV4 := uuid.NewV4()
+	idV4, _ := uuid.NewV4()
 	id := hex.EncodeToString(idV4[:])
 	return client.AdminCreateUser(gitea.CreateUserOption{
 		Username: buildName(user),
@@ -79,10 +79,22 @@ func setupRouter() *gin.Engine {
 			giteaUser, err := client.GetUserInfo(buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")}))
 			outputUser(c, giteaUser, err)
 		})
+		// userRoute.DELETE("/:prefix/:name", func(c *gin.Context) {
+		// 	client := createClient()
+		// 	username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
+		// 	giteaUser, err := client.GetUserInfo(username)
+		// 	userRepos, err := client.ListUserRepos(username)
+		// 	for i:=0; i< len(userRepos); i++{
+		// 		repo:= userRepos[i];
+		// 		client.DeleteRepo(username, repo.repoName)
+		// 	}
+		// 	outputUser(c, giteaUser, err)
+		// })
 
 		userRoute.GET("/:prefix/:name/repos", func(c *gin.Context) {
-			client := createClient()
 			username := buildName(&User{Name: c.Param("name"), Prefix: c.Param("prefix")})
+			client := createClient()
+			client.SetSudo(username)
 			userRepos, err := client.ListUserRepos(username)
 			outputRepos(c, userRepos, err)
 		})
@@ -157,7 +169,8 @@ func setupRouter() *gin.Engine {
 					if keyRx.Title != "" {
 						title = keyRx.Title
 					} else {
-						title = uuid.NewV4().String()
+						id, _ := uuid.NewV4()
+						title = id.String()
 					}
 				} else {
 					title = "lunchbadger-internal-" + keyRx.Type

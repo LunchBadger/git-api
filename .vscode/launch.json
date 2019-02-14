@@ -15,7 +15,7 @@
             "host": "127.0.0.1",
             "program": "${workspaceRoot}",
             "env": {
-                "GITEA_TOKEN":"5b305324daf52ef4c8425d6be41ddc1c5231c89d",
+                "GITEA_TOKEN":"2643d89b304155e402a58a4fafeed8c440cb34e6",
                 "GITEA_HOST": "http://127.0.0.1:3000"
             },
             "args": [],
